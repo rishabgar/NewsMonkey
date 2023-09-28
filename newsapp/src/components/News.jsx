@@ -1,61 +1,48 @@
-import React, { Component } from "react";
+import React, { useEffect, useState } from "react";
 import NewsItem from "./NewsItem";
 import axios from "axios";
+import InfiniteScroll from "react-infinite-scroll-component";
 
-export class News extends Component {
-  static defaultProps = {
-    category: "general",
-  };
-  constructor() {
-    super();
-    console.log("This is news constructor");
-    this.state = {
-      article: [],
-      loading: false,
-      page: 1,
-    };
-  }
-  async componentDidMount() {
+function News(props) {
+  const [articles, setArticles] = useState([]);
+
+  const [page, setPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+
+  async function fetchData() {
     const details = await axios.get(
-      `https://newsapi.org/v2/top-headlines?country=in&category=${this.props.category}&apiKey=5795dbd941e34264b005fe612a5dfb1e&pageSize=20`
+      `https://newsapi.org/v2/top-headlines?country=in&category=${props.category}&apiKey=${props.apiKey}&pageSize=5`
     );
-    this.setState({ article: details.data.articles });
+    setArticles(details.data.articles);
+    setTotalResults(details.data.totalResults);
   }
 
-  handleNextClick = async () => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  async function fetchMoreData() {
     const details = await axios.get(
-      `https://newsapi.org/v2/top-headlines?country=in&category=${
-        this.props.category
-      }&apiKey=5795dbd941e34264b005fe612a5dfb1e&page=${
-        this.state.page + 1
-      }&pageSize=20`
+      `https://newsapi.org/v2/top-headlines?country=in&category=${props.category}&apiKey=${props.apiKey}&pageSize=5&page=${page}`
     );
-    this.setState({
-      page: this.state.page + 1,
-      article: details.data.articles,
-    });
-  };
-  handlePreviousClick = async () => {
-    const details = await axios.get(
-      `https://newsapi.org/v2/top-headlines?country=in&category=${
-        this.props.category
-      }&apiKey=5795dbd941e34264b005fe612a5dfb1e&page=${
-        this.state.page - 1
-      }&pageSize=20`
-    );
-    this.setState({
-      page: this.state.page - 1,
-      article: details.data.articles,
-    });
-  };
+    setArticles((prev) => [...prev, ...details.data.articles]);
+    setPage((prev) => prev + 1);
+  }
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.category, props.apiKey]);
 
-  render() {
-    return (
-      <>
-        <div className="container my-3">
-          <h2>NewsMonkey - Top Headlines</h2>
+  return (
+    <>
+      <h2 style={{ textAlign: "center" }}>NewsMonkey - Top Headlines</h2>
+
+      <InfiniteScroll
+        dataLength={articles.length}
+        next={fetchMoreData}
+        hasMore={articles.length <= totalResults}
+        loader={<h1 style={{ textAlign: "center" }}>Loading...</h1>}
+      >
+        <div className="container">
           <div className="row">
-            {this.state.article.map((element) => {
+            {articles.map((element, index) => {
               return (
                 <div className="col-md-4" key={element.url}>
                   <NewsItem
@@ -76,27 +63,10 @@ export class News extends Component {
               );
             })}
           </div>
-          <div className="container d-flex justify-content-between">
-            <button
-              disabled={this.state.page <= 1}
-              type="button"
-              className="btn btn-primary"
-              onClick={this.handlePreviousClick}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={this.handleNextClick}
-            >
-              Next
-            </button>
-          </div>
         </div>
-      </>
-    );
-  }
+      </InfiniteScroll>
+    </>
+  );
 }
 
 export default News;
